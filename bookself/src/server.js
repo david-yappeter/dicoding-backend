@@ -7,7 +7,7 @@ const { BookValidator } = require('./validator');
 
 const init = async () => {
   const server = Hapi.server({
-    port: 3001,
+    port: process.env.PORT || 5000,
     host:
       process.env.NODE_ENV === 'production' ? process.env.HOST : '127.0.0.1',
     routes: {
