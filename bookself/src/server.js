@@ -1,17 +1,40 @@
-const express = require('express');
-const cors = require('cors');
-const routing = require('./routes');
+const Hapi = require('@hapi/hapi');
+const { PanicHandler } = require('./middleware/panic');
+const routes = require('./routes');
+const { BookHandler } = require('./handler');
+const { BookService } = require('./books');
+const { BookValidator } = require('./validator');
 
-const app = express();
-const port = process.env.PORT || 5000;
-const hostname = '0.0.0.0';
+const init = async () => {
+  const server = Hapi.server({
+    port: 3001,
+    host:
+      process.env.NODE_ENV === 'production' ? process.env.HOST : '127.0.0.1',
+    routes: {
+      cors: {
+        origin: ['*'],
+      },
+    },
+  });
 
-// Body JSON Parser + Cors
-app.use(express.json());
-app.use(cors());
+  // panic handler
+  server.ext('onPreResponse', PanicHandler);
 
-routing(app);
+  await server.register([
+    {
+      plugin: {
+        name: 'book',
+        version: '1.0.0',
+        register: async (server) => {
+          const bookHandler = new BookHandler(new BookService(), BookValidator);
+          server.route(routes(bookHandler));
+        },
+      },
+    },
+  ]);
 
-app.listen(port, hostname, () => {
-  console.log(`Listen and serve on http://${hostname}:${port}`);
-});
+  await server.start();
+  console.log(`server start at ${server.info.uri}`);
+};
+
+init();
